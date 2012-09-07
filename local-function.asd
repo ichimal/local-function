@@ -16,11 +16,9 @@
   :components
     ((:file "local-function")) )
 
-#| ;; for future work
 (defmethod perform ((op test-op)
                     (compo (eql (find-system :local-function))) )
   (declare (ignore op comp))
   (operate 'load-op :local-function-test)
   (operate 'test-op :local-function-test :force t) )
-|#
 
