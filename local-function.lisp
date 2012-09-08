@@ -148,7 +148,9 @@
                      form )) )))
     ;; do parse local-function
     (multiple-value-bind (lambda-list init-params) (separate-pairs bindings)
-      (let ((gs (mapcar (lambda (x) (gensym (symbol-name x))) lambda-list))
+      (let ((gs-lambda-list
+              (mapcar (lambda (x) (gensym (symbol-name x))) lambda-list))
+            (gs (mapcar (lambda (x) (gensym (symbol-name x))) lambda-list))
             (exit-val  (gensym "EXIT-VALUE-"))
             (block-tag (gensym "BLOCK-TAG-"))
             (start-tag (gensym "START-TAG-"))
@@ -163,7 +165,7 @@
                             ',name ,nr-fn ))
                         `(progn
                            (psetq ,@(mapcan ,(lambda (var val) `(,var ,val))
-                                            ',lambda-list (list ,@gs) ))
+                                            ',gs-lambda-list (list ,@gs) ))
                            (go ,',start-tag) ))
                       ;;
                       (global-exit-from-local-function (,exit-val)
@@ -172,19 +174,21 @@
              ;; expand local-function
              ;; global block for a LOCAL-FUNCTION expr
              (block ,block-tag  ; for global exit from a local function
-               (labels ((,name ,lambda-list
+               (labels ((,name ,gs-lambda-list
                           ;; allocate declarations and a documentation
                           (declare ,@(mapcan #'identity decls))
                           ,@doc
                           ;; allocate function body
                           (tagbody
                             ,start-tag  ; for no-return and tail recursion
-                            (return-from ,name
-                              (progn
-                                ,@(butlast body)
-                                ,(eliminate-tail-recursion
-                                   start-tag lambda-list
-                                   (car (last body)) ))) )))
+                            (let ,(mapcar (lambda (var val) `(,var ,val))
+                                          lambda-list gs-lambda-list )
+                              (return-from ,name
+                                (progn
+                                  ,@(butlast body)
+                                  ,(eliminate-tail-recursion
+                                     start-tag lambda-list
+                                     (car (last body)) )))) )))
                  ;; for debug
                  ,@(when *local-function-verbose-debug*
                      `((disassemble #',name) (terpri)) )
