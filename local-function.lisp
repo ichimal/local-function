@@ -111,6 +111,45 @@
                        collect elm into acc-form and do (setq body-p 1)
                      end
                      finally (return (values acc-doc acc-decl acc-form)) )))
+           ;;
+           (replace-all (src from-elms to-elms)
+             ;; assume (= (length from-elms) (length to-elms))
+             (loop for from-elm in from-elms
+                   for to-elm in to-elms
+                   for list = (subst to-elm from-elm src)
+                       then   (subst to-elm from-elm list)
+                   finally (return list) ))
+           ;;
+           (decl-filter (decl lambda-list gs-lambda-list)
+             (case (car decl)
+               (type ; (type typespec var*)
+                 (list* (first decl) (second decl)
+                        (replace-all (cddr decl)
+                                     lambda-list gs-lambda-list )))
+               ((inline notinline ftype optimize)
+                ;; none of arguments of local-function affected
+                (copy-list decl) )
+               ((ignore ignorable)
+                ;; ({ignore|ignorable} {var|(function fn)}*)
+                 (warn "LOCAL-FUNCTION implement limitation: IGNORE and IGNORABLE are not supported correctly on this version: ~s~%" decl)
+                (cons (car decl)
+                      (replace-all (cdr decl)
+                                   lambda-list gs-lambda-list )))
+               (otherwise
+                ;; (dynamic-extent {var|(function fn)}*)
+                ;; or (special var*)
+                ;; or (typespec var*)
+                (cons (car decl)
+                      (replace-all (cdr decl)
+                                   lambda-list gs-lambda-list )))))
+           ;;
+           (replace-decls (decls-list lambda-list gs-lambda-list)
+               ;; decls-list is a list of lists
+               ;; s.t. (((type fixnum i) (ignore x)) ((optimize ...)))
+               (loop for decls in decls-list
+                     append (loop for decl in decls
+                                  collect (decl-filter
+                                            decl lambda-list gs-lambda-list) )))
              ;;
              (eliminate-tail-recursion (start-tag lambda-list tail-form)
                ;; leave form as it is when force-elimination not required
@@ -176,13 +215,15 @@
              (block ,block-tag  ; for global exit from a local function
                (labels ((,name ,gs-lambda-list
                           ;; allocate declarations and a documentation
-                          (declare ,@(mapcan #'identity decls))
+                          (declare ,@(replace-decls
+                                       decls lambda-list gs-lambda-list ))
                           ,@doc
                           ;; allocate function body
                           (tagbody
                             ,start-tag  ; for no-return and tail recursion
                             (let ,(mapcar (lambda (var val) `(,var ,val))
                                           lambda-list gs-lambda-list )
+                              (declare ,@(mapcan #'identity decls))
                               (return-from ,name
                                 (progn
                                   ,@(butlast body)

@@ -38,4 +38,21 @@
       acc ))
   (1 2 3) )
 
+(deftest declare.1
+  (local-function fun ((x 10) (sum 0) dummy)
+    (declare (type fixnum x))
+    (declare (fixnum sum) (ignorable dummy))
+    "local function test"
+    (if (plusp x) (fun (1- x) (+ sum x) nil) sum) )
+  55 )
+
+(deftest declare.2
+  (local-function fun ((x 10) (sum 0) dummy)
+    (declare (type fixnum x))
+    (declare (fixnum sum) (ignorable dummy))
+    "local function test"
+    (when (plusp x) (no-return (fun (1- x) (+ sum x) nil)))
+    sum )
+  55 )
+
 
