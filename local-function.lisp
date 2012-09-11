@@ -150,41 +150,41 @@
                      append (loop for decl in decls
                                   collect (decl-filter
                                             decl lambda-list gs-lambda-list) )))
-             ;;
-             (eliminate-tail-recursion (start-tag lambda-list tail-form)
-               ;; leave form as it is when force-elimination not required
-               (unless *local-function-force-eliminate-tail-call*
-                 (return-from eliminate-tail-recursion tail-form) )
-               ;; check and eliminate tail recursions
-               (let ((form (macroexpand tail-form env)))
-                 (when form
-                   (if (listp form)
-                     (if (eq (car form) name)
-                       ;; eliminate a tail recursive call
-                       `(progn
-                          (psetq ,@(mapcan (lambda (var val) `(,var ,val))
-                                           lambda-list (cdr form) ))
-                          (go ,start-tag) )
-                       ;; check some sort of forms
-                       (case (car form)
-                         ((if)
-                          ;; process conditional expr
-                          `(if ,(cadr form)
-                             ,@(mapcar (lambda (elm)
-                                         (eliminate-tail-recursion
-                                           start-tag lambda-list elm ))
-                                       (cddr form) )))
-                         ((let let* block tagbody progn catch the)
-                          ;; process block code
-                          `(,@(butlast form)
-                             ,(eliminate-tail-recursion
-                                start-tag lambda-list
-                                (car (last form)) )))
-                         ((flet labels) form) ; reserved
-                         ((progn) form)       ; reserved
-                         (otherwise form) ))  ; not tail recursive, maybe
-                     ;; not a list
-                     form )) )))
+           ;;
+           (eliminate-tail-recursion (start-tag lambda-list tail-form)
+             ;; leave form as it is when force-elimination not required
+             (unless *local-function-force-eliminate-tail-call*
+               (return-from eliminate-tail-recursion tail-form) )
+             ;; check and eliminate tail recursions
+             (let ((form (macroexpand tail-form env)))
+               (when form
+                 (if (listp form)
+                   (if (eq (car form) name)
+                     ;; eliminate a tail recursive call
+                     `(progn
+                        (psetq ,@(mapcan (lambda (var val) `(,var ,val))
+                                         lambda-list (cdr form) ))
+                        (go ,start-tag) )
+                     ;; check some sort of forms
+                     (case (car form)
+                       ((if)
+                        ;; process conditional expr
+                        `(if ,(cadr form)
+                           ,@(mapcar (lambda (elm)
+                                       (eliminate-tail-recursion
+                                         start-tag lambda-list elm ))
+                                     (cddr form) )))
+                       ((let let* block tagbody progn catch the)
+                        ;; process block code
+                        `(,@(butlast form)
+                           ,(eliminate-tail-recursion
+                              start-tag lambda-list
+                              (car (last form)) )))
+                       ((flet labels) form) ; reserved
+                       ((progn) form)       ; reserved
+                       (otherwise form) ))  ; not tail recursive, maybe
+                   ;; not a list
+                   form )) )))
     ;; do parse local-function
     (multiple-value-bind (lambda-list init-params) (separate-pairs bindings)
       (let ((gs-lambda-list
