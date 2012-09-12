@@ -83,9 +83,11 @@
                    for (var val) = (if (valid-binding-p elm)
                                      (if (symbolp elm) (list elm) elm)
                                      (error "invalid binding form: ~a" elm) )
-                   collect var into var-acc
-                   collect val into val-acc
-                   finally (return (values var-acc val-acc)) ))
+                   collect (list var
+                                 (gensym (symbol-name var))
+                                 (gensym (concatenate 'string
+                                           (symbol-name var) "-UPDATE") )
+                                 val )))
            ;;
            (declare-p (form)
              (and (consp form)
@@ -115,20 +117,18 @@
                      end
                      finally (return (values acc-doc acc-decl acc-form)) )))
            ;;
-           (replace-all (src from-elms to-elms)
+           (replace-all (src lambda-list-info)
              ;; assume (= (length from-elms) (length to-elms))
-             (loop for from-elm in from-elms
-                   for to-elm in to-elms
-                   for list = (subst to-elm from-elm src)
-                       then   (subst to-elm from-elm list)
+             (loop for (from to) in lambda-list-info
+                   for list = (subst to from src)
+                       then   (subst to from list)
                    finally (return list) ))
            ;;
-           (decl-filter (decl lambda-list gs-lambda-list)
+           (decl-filter (decl lambda-list-info)
              (case (car decl)
                (type ; (type typespec var*)
                  (list* (first decl) (second decl)
-                        (replace-all (cddr decl)
-                                     lambda-list gs-lambda-list )))
+                        (replace-all (cddr decl) lambda-list-info) ))
                ((inline notinline ftype optimize)
                 ;; none of arguments of local-function affected
                 (copy-list decl) )
@@ -136,23 +136,21 @@
                 ;; ({ignore|ignorable} {var|(function fn)}*)
                  (warn "LOCAL-FUNCTION implement limitation: IGNORE and IGNORABLE are not supported correctly on this version: ~s~%" decl)
                 (cons (car decl)
-                      (replace-all (cdr decl)
-                                   lambda-list gs-lambda-list )))
+                      (replace-all (cdr decl) lambda-list-info) ))
                (otherwise
                 ;; (dynamic-extent {var|(function fn)}*)
                 ;; or (special var*)
                 ;; or (typespec var*)
                 (cons (car decl)
-                      (replace-all (cdr decl)
-                                   lambda-list gs-lambda-list )))))
+                      (replace-all (cdr decl) lambda-list-info) ))))
            ;;
-           (replace-decls (decls-list lambda-list gs-lambda-list)
+           (replace-decls (decls-list lambda-list-info)
                ;; decls-list is a list of lists
                ;; s.t. (((type fixnum i) (ignore x)) ((optimize ...)))
                (loop for decls in decls-list
                      append (loop for decl in decls
                                   collect (decl-filter
-                                            decl lambda-list gs-lambda-list) )))
+                                            decl lambda-list-info ))))
            ;;
            (eliminate-tail-recursion (start-tag lambda-list tail-form)
              ;; leave form as it is when force-elimination not required
@@ -189,17 +187,14 @@
                    ;; not a list
                    form )) )))
     ;; do parse local-function
-    (multiple-value-bind (lambda-list init-params) (separate-pairs bindings)
-      (let ((gs-lambda-list
-              (mapcar (lambda (x) (gensym (symbol-name x))) lambda-list))
-            (gs (mapcar (lambda (x) (gensym (symbol-name x))) lambda-list))
+      (let ((lambda-list-info (separate-pairs bindings))
             (exit-val  (gensym "EXIT-VALUE-"))
             (block-tag (gensym "BLOCK-TAG-"))
             (start-tag (gensym "START-TAG-"))
             (nr-fn     (gensym "NO-RETURN-FN-")) )
         (multiple-value-bind (doc decls body) (separate-declarations body)
           ;; make customized macrolets
-          `(macrolet ((no-return ((,nr-fn ,@gs))
+          `(macrolet ((no-return ((,nr-fn ,@(mapcar #'third lambda-list-info)))
                         "to be translated into GO expr with update"
                         (unless (eq ,nr-fn ',name)
                           (error
@@ -207,7 +202,13 @@
                             ',name ,nr-fn ))
                         `(progn
                            (psetq ,@(mapcan ,(lambda (var val) `(,var ,val))
-                                            ',gs-lambda-list (list ,@gs) ))
+                                            ',(mapcar #'second lambda-list-info)
+                                            (list
+                                              ;; Nerver remove this LIST here.
+                                              ;; We need a list of update forms,
+                                              ;; not a list of gensym symbols.
+                                              ,@(mapcar #'third
+                                                        lambda-list-info ))))
                            (go ,',start-tag) ))
                       ;;
                       (global-exit-from-local-function (,exit-val)
@@ -216,26 +217,25 @@
              ;; expand local-function
              ;; global block for a LOCAL-FUNCTION expr
              (block ,block-tag  ; for global exit from a local function
-               (labels ((,name ,gs-lambda-list
+               (labels ((,name ,(mapcar #'second lambda-list-info)
                           ;; allocate declarations and a documentation
-                          (declare ,@(replace-decls
-                                       decls lambda-list gs-lambda-list ))
+                          (declare ,@(replace-decls decls lambda-list-info))
                           ,@doc
                           ;; allocate function body
                           (tagbody
                             ,start-tag  ; for no-return and tail recursion
-                            (let ,(mapcar (lambda (var val) `(,var ,val))
-                                          lambda-list gs-lambda-list )
+                            (let ,(mapcar (lambda (lst) (subseq lst 0 2))
+                                          lambda-list-info )
                               (declare ,@(mapcan #'identity decls))
                               (return-from ,name
                                 (progn
                                   ,@(butlast body)
                                   ,(eliminate-tail-recursion
-                                     start-tag lambda-list
+                                     start-tag (mapcar #'car lambda-list-info)
                                      (car (last body)) )))) )))
                  ;; for debug
                  ,@(when *local-function-verbose-debug*
                      `((disassemble #',name) (terpri)) )
                  ;; execute local function
-                 (,name ,@init-params) ))))))))
+                 (,name ,@(mapcar #'fourth lambda-list-info)) ))) ))))
 
