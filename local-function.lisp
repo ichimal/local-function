@@ -187,55 +187,55 @@
                    ;; not a list
                    form )) )))
     ;; do parse local-function
-      (let ((lambda-list-info (separate-pairs bindings))
-            (exit-val  (gensym "EXIT-VALUE-"))
-            (block-tag (gensym "BLOCK-TAG-"))
-            (start-tag (gensym "START-TAG-"))
-            (nr-fn     (gensym "NO-RETURN-FN-")) )
-        (multiple-value-bind (doc decls body) (separate-declarations body)
-          ;; make customized macrolets
-          `(macrolet ((no-return ((,nr-fn ,@(mapcar #'third lambda-list-info)))
-                        "to be translated into GO expr with update"
-                        (unless (eq ,nr-fn ',name)
-                          (error
-                            "not supported general TCO: jump from ~a into ~a"
-                            ',name ,nr-fn ))
-                        `(progn
-                           (psetq ,@(mapcan ,(lambda (var val) `(,var ,val))
-                                            ',(mapcar #'second lambda-list-info)
-                                            (list
-                                              ;; Nerver remove this LIST here.
-                                              ;; We need a list of update forms,
-                                              ;; not a list of gensym symbols.
-                                              ,@(mapcar #'third
-                                                        lambda-list-info ))))
-                           (go ,',start-tag) ))
-                      ;;
-                      (global-exit-from-local-function (,exit-val)
-                        "for global exit from LOCAL-FUNCTION execution"
-                        `(return-from ,',block-tag ,,exit-val) ))
-             ;; expand local-function
-             ;; global block for a LOCAL-FUNCTION expr
-             (block ,block-tag  ; for global exit from a local function
-               (labels ((,name ,(mapcar #'second lambda-list-info)
-                          ;; allocate declarations and a documentation
-                          (declare ,@(replace-decls decls lambda-list-info))
-                          ,@doc
-                          ;; allocate function body
-                          (tagbody
-                            ,start-tag  ; for no-return and tail recursion
-                            (let ,(mapcar (lambda (lst) (subseq lst 0 2))
-                                          lambda-list-info )
-                              (declare ,@(mapcan #'identity decls))
-                              (return-from ,name
-                                (progn
-                                  ,@(butlast body)
-                                  ,(eliminate-tail-recursion
-                                     start-tag (mapcar #'car lambda-list-info)
-                                     (car (last body)) )))) )))
-                 ;; for debug
-                 ,@(when *local-function-verbose-debug*
-                     `((disassemble #',name) (terpri)) )
-                 ;; execute local function
-                 (,name ,@(mapcar #'fourth lambda-list-info)) ))) ))))
+    (let ((lambda-list-info (separate-pairs bindings))
+          (exit-val  (gensym "EXIT-VALUE-"))
+          (block-tag (gensym "BLOCK-TAG-"))
+          (start-tag (gensym "START-TAG-"))
+          (nr-fn     (gensym "NO-RETURN-FN-")) )
+      (multiple-value-bind (doc decls body) (separate-declarations body)
+        ;; make customized macrolets
+        `(macrolet ((no-return ((,nr-fn ,@(mapcar #'third lambda-list-info)))
+                      "to be translated into GO expr with update"
+                      (unless (eq ,nr-fn ',name)
+                        (error
+                          "not supported general TCO: jump from ~a into ~a"
+                          ',name ,nr-fn ))
+                      `(progn
+                         (psetq ,@(mapcan ,(lambda (var val) `(,var ,val))
+                                          ',(mapcar #'second lambda-list-info)
+                                          (list
+                                            ;; Nerver remove this LIST here.
+                                            ;; We need a list of update forms,
+                                            ;; not a list of gensym symbols.
+                                            ,@(mapcar #'third
+                                                      lambda-list-info ))))
+                         (go ,',start-tag) ))
+                    ;;
+                    (global-exit-from-local-function (,exit-val)
+                      "for global exit from LOCAL-FUNCTION execution"
+                      `(return-from ,',block-tag ,,exit-val) ))
+           ;; expand local-function
+           ;; global block for a LOCAL-FUNCTION expr
+           (block ,block-tag  ; for global exit from a local function
+             (labels ((,name ,(mapcar #'second lambda-list-info)
+                        ;; allocate declarations and a documentation
+                        (declare ,@(replace-decls decls lambda-list-info))
+                        ,@doc
+                        ;; allocate function body
+                        (tagbody
+                          ,start-tag  ; for no-return and tail recursion
+                          (let ,(mapcar (lambda (lst) (subseq lst 0 2))
+                                        lambda-list-info )
+                            (declare ,@(mapcan #'identity decls))
+                            (return-from ,name
+                              (progn
+                                ,@(butlast body)
+                                ,(eliminate-tail-recursion
+                                   start-tag (mapcar #'car lambda-list-info)
+                                   (car (last body)) )))) )))
+               ;; for debug
+               ,@(when *local-function-verbose-debug*
+                   `((disassemble #',name) (terpri)) )
+               ;; execute local function
+               (,name ,@(mapcar #'fourth lambda-list-info)) ))) ))))
 
