@@ -10,7 +10,7 @@
   :version "0.2.0"
   :maintainer "SUZUKI Shingo"
   :author "SUZUKI Shingo"
-  :licence "MIT"
+  :license "MIT"
   :description "local-function: a variant of named-let with no-return feature"
   :serial nil
   :components
