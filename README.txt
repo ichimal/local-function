@@ -28,22 +28,22 @@ will be expanded to
 (defun fx (x)
   (declare (integer x))
   (block #1=#:G1
-  (labels
-    ((f (#3=#:G3 #4=#:G4)
-       (declare (integer #3# #4#))
-       (tagbody #2=#:G2
-         (let ((i #3#) (sum #4#))
-           (declare (integer i sum))
-           (return-from f
-             (progn
-               (if (> i 0)
-                 (progn
-                   (psetq i (the integer (1- i))
-                          sum (the integer (+ sum i)))
-                   (go #2#) ))
-               (format t \"~&SUM is ~a~%\" sum)
-               (return-from #1# sum) ))))))    ; or, just sum
-    (f x 0) )))
+    (labels
+      ((f (#3=#:G3 #4=#:G4)
+         (declare (integer #3# #4#))
+         (tagbody #2=#:G2
+           (let ((i #3#) (sum #4#))
+             (declare (integer i sum))
+             (return-from f
+               (progn
+                 (if (> i 0)
+                   (progn
+                     (psetq i (the integer (1- i))
+                            sum (the integer (+ sum i)))
+                     (go #2#) ))
+                 (format t \"~&SUM is ~a~%\" sum)
+                 (return-from #1# sum) ))))))    ; or, just sum
+      (f x 0) )))
 
 and enable to execute pseudo recursive call deeper than deeper.
 
