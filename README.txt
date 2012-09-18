@@ -5,7 +5,7 @@ LOCAL-FUNCTION supports NO-RETURN function call feature, which will be
 translated into a GO expression.
 NO-RETUREN can be located anywhere upon local-function body.
 
-NOTE: jus on this implementation, NO-RETURN not supported to call other
+NOTE: just on this implementation, NO-RETURN not supported to call other
 functions.
 
 NOTE: TCO for non NO-RETURN style recursive call is not guaranteed.
