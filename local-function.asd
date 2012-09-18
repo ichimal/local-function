@@ -13,8 +13,15 @@
   :license "MIT"
   :description "local-function: a variant of named-let with no-return feature"
   :serial nil
+  :defsystem-depends-on (:asdf-project-helper)
   :components
     ((:file "local-function")) )
+
+(defmethod perform :after ((op load-op)
+                           (component (eql (find-system :local-function))) )
+  (declare (ignore op component))
+  (setf (system-long-description (find-system :local-function))
+        (aph:convert-from-document-file "README.txt" :local-function) ))
 
 (defmethod perform ((op test-op)
                     (component (eql (find-system :local-function))) )
