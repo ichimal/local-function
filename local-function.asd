@@ -20,8 +20,7 @@
 (defmethod perform :after ((op load-op)
                            (component (eql (find-system :local-function))) )
   (declare (ignore op component))
-  (setf (system-long-description (find-system :local-function))
-        (aph:convert-from-document-file "README.txt" :local-function) ))
+  (aph:update-long-description "README.txt" :local-function) )
 
 (defmethod perform ((op test-op)
                     (component (eql (find-system :local-function))) )
