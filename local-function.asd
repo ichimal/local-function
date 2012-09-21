@@ -20,7 +20,7 @@
 (defmethod perform :after ((op load-op)
                            (component (eql (find-system :local-function))) )
   (declare (ignore op component))
-  (aph:update-long-description "README.txt" :local-function) )
+  (aph:update-long-description "README.md" :local-function :type :markdown) )
 
 (defmethod perform ((op test-op)
                     (component (eql (find-system :local-function))) )

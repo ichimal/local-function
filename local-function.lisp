@@ -16,7 +16,7 @@
   "To enable force to eliminate tail call" )
 
 (defmacro local-function (name (&rest bindings) &body body &environment env)
-  #.(aph:convert-from-document-file "README.txt" :local-function)
+  #.(aph:convert-from-document-file "README.md" :local-function :type :markdown)
   ;; helper functions
   (labels ((valid-binding-p (binding)
              "check valid LET binding or not"
